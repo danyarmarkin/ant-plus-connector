@@ -1,0 +1,56 @@
+# -----------------------------------
+# nice!nano with ANT SoftDevice S340 7.0.1
+# (installed by arduino_s340/install.sh)
+# -----------------------------------
+nicenano_s340.name=nice!nano (S340 ANT+BLE)
+
+# VID/PIDs
+nicenano_s340.vid.0=0x239A
+nicenano_s340.pid.0=0x00B3
+nicenano_s340.vid.1=0x239A
+nicenano_s340.pid.1=0x80B3
+
+# Upload
+nicenano_s340.bootloader.tool=bootburn
+nicenano_s340.upload.tool=nrfutil
+nicenano_s340.upload.protocol=nrfutil
+nicenano_s340.upload.use_1200bps_touch=true
+nicenano_s340.upload.wait_for_upload_port=true
+nicenano_s340.upload.maximum_size=770048
+nicenano_s340.upload.maximum_data_size=229376
+
+# Build
+nicenano_s340.build.mcu=cortex-m4
+nicenano_s340.build.f_cpu=64000000
+nicenano_s340.build.board=NICENANO_S340
+nicenano_s340.build.core=nRF5
+nicenano_s340.build.variant=nicenano_s340
+nicenano_s340.build.usb_manufacturer="Nice Keyboards"
+nicenano_s340.build.usb_product="nice!nano ANT"
+nicenano_s340.build.extra_flags=-DNRF52840_XXAA {build.flags.usb} '-DANT_LICENSE_KEY="{build.ant_license_key}"'
+nicenano_s340.build.ldscript=nrf52840_s340_v7.ld
+nicenano_s340.build.vid=0x239A
+nicenano_s340.build.pid=0x80B3
+nicenano_s340.build.uf2_family=0xADA52840
+
+# ANT SoftDevice license key. install.sh substitutes the evaluation key from the S340 nrf_sdm.h
+# (NON-COMMERCIAL USE ONLY) or $ANT_LICENSE_KEY if set.
+nicenano_s340.build.ant_license_key=@ANT_LICENSE_KEY@
+
+# Menu: SoftDevice
+nicenano_s340.menu.softdevice.s340v7=S340 7.0.1
+nicenano_s340.menu.softdevice.s340v7.build.sd_name=s340
+nicenano_s340.menu.softdevice.s340v7.build.sd_version=7.0.1
+nicenano_s340.menu.softdevice.s340v7.build.sd_fwid=0x00CE
+
+# Menu: Debug Level
+nicenano_s340.menu.debug.l0=Level 0 (Release)
+nicenano_s340.menu.debug.l0.build.debug_flags=-DCFG_DEBUG=0
+nicenano_s340.menu.debug.l1=Level 1 (Error Message)
+nicenano_s340.menu.debug.l1.build.debug_flags=-DCFG_DEBUG=1
+nicenano_s340.menu.debug.l2=Level 2 (Full Debug)
+nicenano_s340.menu.debug.l2.build.debug_flags=-DCFG_DEBUG=2
+
+# Menu: Debug Port
+nicenano_s340.menu.debug_output.serial=Serial
+nicenano_s340.menu.debug_output.serial.build.logger_flags=-DCFG_LOGGER=0

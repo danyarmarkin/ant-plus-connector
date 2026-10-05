@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ANT+ Пульс</title>
+<style>
+  :root {
+    --bg: #f6f6f4; --panel: #ffffff; --text: #1d1d1b; --muted: #6b6b66; --grid: #e6e6e1;
+    --line: #d43d3d; --fill: rgba(212, 61, 61, 0.10); --ok: #2f8a4a; --warn: #b7791f; --border: #e3e3de;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #151514; --panel: #1e1e1c; --text: #ececea; --muted: #9a9a94; --grid: #2c2c29;
+      --line: #ff6b6b; --fill: rgba(255, 107, 107, 0.12); --ok: #5cc27a; --warn: #e0a84a; --border: #2e2e2b;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 15px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 1100px; margin: 0 auto; padding: 20px 16px 32px; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  h1 { font-size: 18px; font-weight: 600; margin: 0; }
+  .status { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+  .dot.ok { background: var(--ok); } .dot.warn { background: var(--warn); }
+  .top { display: grid; grid-template-columns: minmax(220px, 1fr) 3fr; gap: 16px; margin-top: 16px; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+  .bpm { display: flex; align-items: center; gap: 14px; }
+  .bpm .value { font-size: 72px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+  .bpm .unit { color: var(--muted); font-size: 14px; }
+  .heart { width: 40px; height: 40px; color: var(--line); transform-origin: center; }
+  .heart.beat { animation: beat 0.35s ease-out; }
+  @keyframes beat { 0% { transform: scale(1); } 30% { transform: scale(1.25); } 100% { transform: scale(1); } }
+  .note { color: var(--muted); font-size: 13px; margin-top: 8px; min-height: 18px; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 12px; }
+  .stat .k { color: var(--muted); font-size: 12px; }
+  .stat .v { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .chart-card { margin-top: 16px; }
+  .chart-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .seg button { background: transparent; color: var(--text); border: 0; padding: 6px 12px; font: inherit; font-size: 13px; cursor: pointer; }
+  .seg button.on { background: var(--line); color: #fff; }
+  canvas { width: 100%; height: 360px; display: block; }
+  .sensors-card { margin-top: 16px; }
+  .sensors-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+  .sensor-row { display: grid; grid-template-columns: 1fr auto auto auto; align-items: center; gap: 16px;
+                padding: 8px 0; border-top: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+  .sensor-row .id { font-weight: 600; }
+  .sensor-row .id small { color: var(--muted); font-weight: 400; margin-left: 6px; }
+  .sensor-row .muted { color: var(--muted); font-size: 13px; }
+  .bars { display: inline-flex; align-items: flex-end; gap: 2px; height: 14px; margin-right: 6px; vertical-align: -2px; }
+  .bars i { width: 3px; background: var(--grid); border-radius: 1px; }
+  .bars i.on { background: var(--ok); }
+  .btn { background: transparent; color: var(--text); border: 1px solid var(--border); border-radius: 8px;
+         padding: 5px 12px; font: inherit; font-size: 13px; cursor: pointer; }
+  .btn.primary { background: var(--line); border-color: var(--line); color: #fff; }
+  .btn:disabled { opacity: 0.5; cursor: default; }
+  .badge { font-size: 12px; color: var(--ok); }
+  .empty { color: var(--muted); font-size: 13px; padding: 8px 0; border-top: 1px solid var(--border); }
+  @media (max-width: 640px) { .sensor-row { grid-template-columns: 1fr auto; } .sensor-row .muted { display: none; } }
+  .fan-card { margin-top: 16px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .fan-main { display: flex; align-items: center; gap: 14px; }
+  .fan-icon { width: 36px; height: 36px; color: var(--muted); }
+  .fan-icon.spin { color: var(--line); animation: spin var(--spin, 1s) linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .fan-title { font-weight: 600; }
+  .fan-sub { color: var(--muted); font-size: 13px; }
+  .fan-ctl { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .toggle { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; user-select: none; }
+  .fan-err { color: var(--warn); font-size: 12px; width: 100%; }
+  .speed { width: 100%; }
+  .speed-track { position: relative; height: 8px; border-radius: 4px; background: var(--grid); }
+  .speed-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; background: var(--line); transition: width 0.8s ease; }
+  .speed-ticks { display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; margin-top: 4px; }
+  .seg button:disabled { opacity: 0.4; cursor: default; }
+  .info { color: var(--muted); font-size: 12px; margin-top: 10px; overflow-wrap: anywhere; }
+  @media (max-width: 640px) {
+    .top { grid-template-columns: 1fr; }
+    .bpm .value { font-size: 56px; }
+    canvas { height: 260px; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>ANT+ пульсометр · nice!nano S340</h1>
+    <div class="status"><span class="dot" id="dot"></span><span id="status">подключение…</span></div>
+  </header>
+
+  <div class="top">
+    <div class="card">
+      <div class="bpm">
+        <svg class="heart" id="heart" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M12 21s-7.5-4.6-10-9.3C.4 8.4 2.3 4.5 6 4.5c2.1 0 3.4 1.1 4 2.2.6-1.1 1.9-2.2 4-2.2 3.7 0 5.6 3.9 4 7.2C19.5 16.4 12 21 12 21z"/>
+        </svg>
+        <div>
+          <div class="value" id="bpm">--</div>
+          <div class="unit">уд/мин</div>
+        </div>
+      </div>
+      <div class="note" id="note"></div>
+    </div>
+    <div class="card stats">
+      <div class="stat"><div class="k">мин</div><div class="v" id="min">--</div></div>
+      <div class="stat"><div class="k">сред</div><div class="v" id="avg">--</div></div>
+      <div class="stat"><div class="k">макс</div><div class="v" id="max">--</div></div>
+      <div class="stat"><div class="k">RR, мс</div><div class="v" id="rr">--</div></div>
+      <div class="stat"><div class="k">RSSI, дБм</div><div class="v" id="rssi">--</div></div>
+      <div class="stat"><div class="k">ID датчика</div><div class="v" id="devid">--</div></div>
+    </div>
+  </div>
+
+  <div class="card sensors-card">
+    <div class="sensors-head">
+      <div><span class="fan-title">Датчики рядом</span> <span class="fan-sub" id="targetText"></span></div>
+      <button class="btn" id="pairAny">Любой (первый найденный)</button>
+    </div>
+    <div id="sensorList"><div class="empty">сканирование…</div></div>
+  </div>
+
+  <div class="card fan-card" id="fanCard">
+    <div class="fan-main">
+      <svg class="fan-icon" id="fanIcon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <circle cx="12" cy="12" r="2"/>
+        <path d="M12 10c-1-3-.5-6.5 2-7.5 2.6-1 4 1.5 2.8 3.6C15.9 7.8 13.9 9 12 10zM14 12c3-1 6.5-.5 7.5 2 1 2.6-1.5 4-3.6 2.8C16.2 15.9 15 13.9 14 12zM12 14c1 3 .5 6.5-2 7.5-2.6 1-4-1.5-2.8-3.6C8.1 16.2 10.1 15 12 14zM10 12c-3 1-6.5.5-7.5-2-1-2.6 1.5-4 3.6-2.8C7.8 8.1 9 10.1 10 12z"/>
+      </svg>
+      <div>
+        <div class="fan-title" id="fanTitle">Вентилятор</div>
+        <div class="fan-sub" id="fanSub">подключение…</div>
+      </div>
+    </div>
+    <div class="fan-ctl">
+      <label class="toggle"><input type="checkbox" id="fanAuto"> плавно по пульсу (90 → 1, 120 → 2, 150 → 3)</label>
+      <label class="toggle"><input type="checkbox" id="fanAlarm"> звук</label>
+      <div class="seg" id="fanBtns">
+        <button data-p="0">выкл</button>
+        <button data-l="1">1</button>
+        <button data-l="2">2</button>
+        <button data-l="3">3</button>
+      </div>
+    </div>
+    <div class="speed">
+      <div class="speed-track"><div class="speed-fill" id="speedFill" style="width:0"></div></div>
+      <div class="speed-ticks"><span>выкл</span><span>1</span><span>2</span><span>3</span></div>
+    </div>
+    <div class="fan-err" id="fanErr"></div>
+  </div>
+
+  <div class="card chart-card">
+    <div class="chart-head">
+      <div class="status">Пульс, уд/мин (мин/сред/макс за окно)</div>
+      <div class="seg" id="win">
+        <button data-s="60">1 мин</button>
+        <button data-s="300" class="on">5 мин</button>
+        <button data-s="900">15 мин</button>
+        <button data-s="3600">1 ч</button>
+      </div>
+    </div>
+    <canvas id="chart"></canvas>
+    <div class="info" id="info"></div>
+  </div>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let samples = [];
+let windowSec = 300;
+let lastSample = null;
+
+function css(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+function setStatus(st) {
+  if (!st) return;
+  const ok = st.serial === "connected";
+  $("dot").className = "dot " + (ok ? "ok" : "warn");
+  $("status").textContent = ok ? `плата: ${st.port}` : `плата: ${st.serial}`;
+  if (st.info) $("info").textContent = "Датчик: " + st.info;
+}
+
+function addSample(s) {
+  samples.push(s);
+  if (samples.length > 16000) samples.splice(0, samples.length - 16000);
+  lastSample = s;
+  render();
+}
+
+function render() {
+  const s = lastSample;
+  if (s) {
+    if (s.state === "tracking") {
+      $("bpm").textContent = s.hr;
+      $("note").textContent = "";
+      const h = $("heart");
+      h.classList.remove("beat"); void h.offsetWidth; h.classList.add("beat");
+    } else {
+      $("bpm").textContent = "--";
+      $("note").textContent = s.state === "nocontact" ? "нет контакта с кожей — смочите электроды"
+                                                     : "поиск датчика…";
+    }
+    if (s.rr) $("rr").textContent = s.rr;
+    if (s.rssi !== undefined) $("rssi").textContent = s.rssi;
+    if (s.id !== undefined) $("devid").textContent = s.id;
+  }
+  const now = Date.now() / 1000;
+  const vis = samples.filter(x => x.t >= now - windowSec && x.state === "tracking" && x.hr > 0);
+  if (vis.length) {
+    const hrs = vis.map(x => x.hr);
+    $("min").textContent = Math.min(...hrs);
+    $("max").textContent = Math.max(...hrs);
+    $("avg").textContent = Math.round(hrs.reduce((a, b) => a + b, 0) / hrs.length);
+  } else {
+    $("min").textContent = $("avg").textContent = $("max").textContent = "--";
+  }
+  drawChart(now);
+}
+
+function drawChart(now) {
+  const c = $("chart");
+  const dpr = window.devicePixelRatio || 1;
+  const W = c.clientWidth, H = c.clientHeight;
+  if (c.width !== W * dpr || c.height !== H * dpr) { c.width = W * dpr; c.height = H * dpr; }
+  const g = c.getContext("2d");
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, W, H);
+
+  const padL = 40, padR = 12, padT = 10, padB = 24;
+  const pw = W - padL - padR, ph = H - padT - padB;
+  const t0 = now - windowSec;
+  const vis = samples.filter(x => x.t >= t0 - 2);
+  const hrs = vis.filter(x => x.state === "tracking" && x.hr > 0).map(x => x.hr);
+  let lo = hrs.length ? Math.min(...hrs) : 50, hi = hrs.length ? Math.max(...hrs) : 120;
+  lo = Math.floor((lo - 10) / 10) * 10; hi = Math.ceil((hi + 10) / 10) * 10;
+  if (hi - lo < 40) { const m = (hi + lo) / 2; lo = Math.floor((m - 20) / 10) * 10; hi = lo + 40; }
+  lo = Math.max(0, lo);
+  const X = t => padL + (t - t0) / windowSec * pw;
+  const Y = v => padT + (1 - (v - lo) / (hi - lo)) * ph;
+
+  g.font = "11px -apple-system, sans-serif";
+  g.fillStyle = css("--muted");
+  g.strokeStyle = css("--grid");
+  g.lineWidth = 1;
+  const step = (hi - lo) > 80 ? 20 : 10;
+  for (let v = lo; v <= hi; v += step) {
+    g.beginPath(); g.moveTo(padL, Y(v) + 0.5); g.lineTo(W - padR, Y(v) + 0.5); g.stroke();
+    g.textAlign = "right"; g.textBaseline = "middle"; g.fillText(v, padL - 6, Y(v));
+  }
+  const tickEvery = windowSec <= 60 ? 10 : windowSec <= 300 ? 60 : windowSec <= 900 ? 180 : 600;
+  g.textAlign = "center"; g.textBaseline = "top";
+  for (let k = 0; k <= windowSec; k += tickEvery) {
+    const x = X(now - k);
+    const label = k === 0 ? "сейчас" : (k >= 60 ? `−${k / 60} мин` : `−${k} с`);
+    g.fillText(label, Math.min(Math.max(x, padL + 16), W - padR - 20), H - padB + 6);
+  }
+
+  // Split the line where the strap had no contact or a gap > 5 s
+  const segs = []; let cur = [];
+  for (const p of vis) {
+    const good = p.state === "tracking" && p.hr > 0;
+    if (!good || (cur.length && p.t - cur[cur.length - 1].t > 5)) { if (cur.length) segs.push(cur); cur = []; }
+    if (good) cur.push(p);
+  }
+  if (cur.length) segs.push(cur);
+
+  g.save();
+  g.beginPath(); g.rect(padL, padT, pw, ph); g.clip();
+  for (const seg of segs) {
+    g.beginPath();
+    seg.forEach((p, i) => i ? g.lineTo(X(p.t), Y(p.hr)) : g.moveTo(X(p.t), Y(p.hr)));
+    g.lineTo(X(seg[seg.length - 1].t), padT + ph); g.lineTo(X(seg[0].t), padT + ph); g.closePath();
+    g.fillStyle = css("--fill"); g.fill();
+    g.beginPath();
+    seg.forEach((p, i) => i ? g.lineTo(X(p.t), Y(p.hr)) : g.moveTo(X(p.t), Y(p.hr)));
+    g.strokeStyle = css("--line"); g.lineWidth = 2; g.lineJoin = "round"; g.stroke();
+  }
+  const last = segs.length ? segs[segs.length - 1] : null;
+  if (last && now - last[last.length - 1].t < 3) {
+    const p = last[last.length - 1];
+    g.beginPath(); g.arc(X(p.t), Y(p.hr), 4, 0, Math.PI * 2); g.fillStyle = css("--line"); g.fill();
+  }
+  g.restore();
+}
+
+function setFan(f) {
+  if (!f) return;
+  $("fanTitle").textContent = f.name && f.name !== "Вентилятор" ? `Вентилятор · ${f.name}` : "Вентилятор";
+  $("fanAuto").checked = !!f.auto;
+  $("fanAlarm").checked = !!f.alarm;
+  $("fanAlarm").disabled = !f.available;
+  // bar: 0 = off, 1/3 per level; in auto mode show the continuous speed
+  const v = !f.on ? 0 : (f.auto && f.speed != null ? f.speed : f.level || 0);
+  $("speedFill").style.width = `${(v / 3) * 100}%`;
+  const icon = $("fanIcon");
+  if (!f.available) {
+    $("fanSub").textContent = "недоступен — войдите в Xiaomi (xiaomi/login.py)";
+    icon.classList.remove("spin");
+  } else {
+    let sub = f.on ? `включён, ступень ${f.level}` : "выключен";
+    if (f.auto && f.speed != null) sub += ` · плавно ${f.speed.toFixed(2)} (пульс ${Math.round(f.hr_smooth)})`;
+    else sub += f.auto ? " · авто, ждём пульс" : " · ручной режим";
+    $("fanSub").textContent = sub;
+    icon.classList.toggle("spin", !!f.on);
+    icon.style.setProperty("--spin", f.on ? `${1.2 / (f.level || 1)}s` : "1s");
+  }
+  document.querySelectorAll("#fanBtns button").forEach(b => {
+    b.disabled = !f.available;
+    b.classList.toggle("on", f.available && (b.dataset.p === "0" ? f.on === false : f.on && +b.dataset.l === f.level));
+  });
+  $("fanErr").textContent = f.error && f.available ? "Ошибка: " + f.error : (!f.available && f.error ? f.error : "");
+}
+
+function rssiBars(rssi) {
+  const n = rssi >= -60 ? 4 : rssi >= -70 ? 3 : rssi >= -80 ? 2 : 1;
+  return '<span class="bars">' + [5, 8, 11, 14].map((h, i) => `<i class="${i < n ? "on" : ""}" style="height:${h}px"></i>`).join("") + "</span>";
+}
+
+let sensorState = { target: null, list: [] };
+function setSensors(st) {
+  if (!st) return;
+  sensorState = st;
+  $("targetText").textContent = st.target ? `· выбран #${st.target}` : "· подключение к первому найденному";
+  $("pairAny").disabled = st.target == null;
+  const list = [...st.list].sort((a, b) => b.rssi - a.rssi);
+  if (!list.length) {
+    $("sensorList").innerHTML = '<div class="empty">ремней не слышно — наденьте ремень и смочите электроды</div>';
+    return;
+  }
+  $("sensorList").innerHTML = list.map(s => {
+    const selected = st.target === s.id;
+    const action = s.paired && !selected
+      ? `<span class="badge">● подключён</span> <button class="btn" data-id="${s.id}" title="подключаться только к этому ремню">Закрепить</button>`
+      : s.paired ? '<span class="badge">● подключён</span>'
+      : selected ? '<span class="muted">подключается…</span>'
+      : `<button class="btn primary" data-id="${s.id}">Подключить</button>`;
+    return `<div class="sensor-row">
+      <div class="id">#${s.id}${selected ? "<small>выбран</small>" : ""}</div>
+      <div class="muted">${rssiBars(s.rssi)}${s.rssi} дБм</div>
+      <div class="muted">${s.hr ? s.hr + " уд/мин" : "нет контакта"}</div>
+      <div>${action}</div>
+    </div>`;
+  }).join("");
+  $("sensorList").querySelectorAll("button[data-id]").forEach(b =>
+    b.addEventListener("click", () => pair(+b.dataset.id)));
+}
+
+function pair(device) {
+  return fetch("/pair", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ device }) });
+}
+$("pairAny").addEventListener("click", () => pair(0));
+
+function postFan(body) {
+  return fetch("/fan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+}
+$("fanAuto").addEventListener("change", e => postFan({ auto: e.target.checked }));
+$("fanAlarm").addEventListener("change", e => postFan({ alarm: e.target.checked }));
+document.querySelectorAll("#fanBtns button").forEach(b => b.addEventListener("click", () => {
+  postFan(b.dataset.p === "0" ? { power: false } : { power: true, level: +b.dataset.l });
+}));
+
+document.querySelectorAll("#win button").forEach(b => b.addEventListener("click", () => {
+  document.querySelectorAll("#win button").forEach(x => x.classList.toggle("on", x === b));
+  windowSec = +b.dataset.s;
+  render();
+}));
+window.addEventListener("resize", render);
+setInterval(render, 1000);
+
+fetch("/history").then(r => r.json()).then(d => {
+  samples = d.history; lastSample = samples[samples.length - 1] || null;
+  setStatus(d.status); setFan(d.fan); setSensors(d.sensors); render();
+  const es = new EventSource("/events");
+  es.onmessage = e => {
+    const m = JSON.parse(e.data);
+    if (m.type === "sample") addSample(m); else if (m.type === "status") setStatus(m); else if (m.type === "fan") setFan(m); else if (m.type === "sensors") setSensors(m);
+  };
+  es.onerror = () => { $("dot").className = "dot warn"; $("status").textContent = "сервер недоступен"; };
+});
+</script>
+</body>
+</html>

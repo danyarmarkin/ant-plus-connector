@@ -1,0 +1,8 @@
+// Copy this file to ant_plus_key.h (it is git-ignored) and replace the zeros with the ANT+ network key.
+//
+// Garmin publishes the key here (64-bit "ANT+" key):
+//   https://developer.garmin.com/ant-program/ant-ant-plus/network-keys/
+// It may only be used by devices that strictly follow the ANT+ Device Profiles
+// (ANT+ Adopter Agreement: https://developer.garmin.com/ant-program/licensing/adopter-agreement/).
+#pragma once
+static const uint8_t ANT_PLUS_NETWORK_KEY[8] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };

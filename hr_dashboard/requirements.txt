@@ -1,0 +1,6 @@
+pyserial>=3.5
+# fan control through Xiaomi cloud (optional)
+requests
+pycryptodome
+dnspython
+-r ../xiaomi_extractor/requirements.txt

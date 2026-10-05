@@ -1,0 +1,16 @@
+# Garmin ANT SoftDevices: not redistributable, fetched by scripts/get_softdevice.sh
+garmin/
+# ANT+ network key (ANT+ Adopter agreement)
+firmware/ant_hrm/ant_plus_key.h
+ant_hrm/ant_plus_key.h
+# Xiaomi cloud session tokens
+xiaomi/session.json
+# local backups, builds, envs
+backup/
+build/
+*.uf2
+.venv/
+venv/
+__pycache__/
+.claude/
+.DS_Store
